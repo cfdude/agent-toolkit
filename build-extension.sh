@@ -26,7 +26,7 @@ mkdir -p build/lib
 echo "Installing Python dependencies..."
 uv pip install \
   --target build/lib \
-  --python /usr/local/bin/python \
+  --python python3 \
   fastmcp requests datacommons-client pydantic pydantic-settings python-dateutil
 
 # Copy manifest to build directory
