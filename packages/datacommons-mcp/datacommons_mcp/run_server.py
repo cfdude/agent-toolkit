@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Wrapper script to run the MCP server with config handling.
+Entry point for Claude Desktop extension mode.
+
+This module handles API key configuration from Claude Desktop UI and starts the MCP server.
+Separate from cli.py to maintain backward compatibility with CLI usage modes.
 """
 
 import os
@@ -8,73 +11,58 @@ import sys
 
 
 def main() -> None:
-    # Debug: Print all available info
-    print("=" * 60, file=sys.stderr)
-    print("MCP Server Startup Debug Info", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
+    """
+    Initialize and run the DataCommons MCP server in extension mode.
 
-    # Check environment variables
-    print("\nEnvironment Variables:", file=sys.stderr)
-    for key in sorted(os.environ.keys()):
-        if not key.startswith("_"):
-            value = os.environ[key]
-            if "KEY" in key or "TOKEN" in key or "SECRET" in key or "PASSWORD" in key:
-                print(f"  {key}=<present, {len(value)} chars>", file=sys.stderr)
-            else:
-                print(f"  {key}={value[:80]}", file=sys.stderr)
+    Validates API key configuration from environment and starts the FastMCP server.
+    Exits with code 1 if API key is not configured.
+    """
+    debug_mode = os.environ.get("DC_DEBUG", "").lower() in ("1", "true", "yes")
 
-    # Check command line arguments
-    print(f"\nCommand Line Args: {sys.argv}", file=sys.stderr)
+    # Debug logging (opt-in only)
+    if debug_mode:
+        print("=" * 60, file=sys.stderr)
+        print("DataCommons MCP Server - Debug Mode", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print(f"Command line args: {sys.argv}", file=sys.stderr)
+        print(f"PYTHONPATH: {os.environ.get('PYTHONPATH', 'not set')}", file=sys.stderr)
 
-    # Look for DC_API_KEY in environment
+    # Get and validate API key
     api_key_raw = os.environ.get("DC_API_KEY", "")
-    api_key = api_key_raw.strip()  # Strip whitespace!
+    api_key = api_key_raw.strip()  # Strip whitespace
 
-    print(
-        f"\nInitial DC_API_KEY value: {api_key if not api_key else f'<{len(api_key)} chars>'}",
-        file=sys.stderr,
-    )
-    if api_key_raw != api_key:
-        print(
-            f"  ⚠️  Stripped whitespace from API key (was {len(api_key_raw)} chars, now {len(api_key)} chars)",
-            file=sys.stderr,
-        )
+    if debug_mode and api_key_raw != api_key:
+        print(f"Stripped whitespace from API key ({len(api_key_raw)} → {len(api_key)} chars)", file=sys.stderr)
 
-    # Check if it's a placeholder that wasn't substituted
+    # Check for unsubstituted variable placeholders
     if api_key and api_key.startswith("$"):
-        print(
-            f"⚠️  DC_API_KEY looks like an unsubstituted variable: {api_key}",
-            file=sys.stderr,
-        )
+        if debug_mode:
+            print(f"Warning: DC_API_KEY looks like unsubstituted variable: {api_key}", file=sys.stderr)
         api_key = ""  # Treat as not set
 
-    # If no valid API key found, we need to fail gracefully
+    # Validate API key is present
     if not api_key:
         print("\n" + "=" * 60, file=sys.stderr)
-        print("❌ DC_API_KEY not configured", file=sys.stderr)
+        print("ERROR: DC_API_KEY not configured", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
-        print(
-            "\nPlease configure your DataCommons API key in Claude Desktop:",
-            file=sys.stderr,
-        )
-        print("1. Go to Settings → Developer → Extensions", file=sys.stderr)
-        print("2. Find the 'datacommons-mcp' extension", file=sys.stderr)
-        print("3. Click 'Configure' and enter your API key", file=sys.stderr)
-        print("4. Get your API key at: https://datacommons.org/", file=sys.stderr)
+        print("\nPlease configure your DataCommons API key in Claude Desktop:", file=sys.stderr)
+        print("  1. Go to Settings → Developer → Extensions", file=sys.stderr)
+        print("  2. Find the 'datacommons-mcp' extension", file=sys.stderr)
+        print("  3. Click 'Configure' and enter your API key", file=sys.stderr)
+        print("  4. Get your API key at: https://apikeys.datacommons.org", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
-        # Don't exit - let the server start so it can report the error properly
-    else:
-        # Explicitly set/export the DC_API_KEY environment variable (cleaned)
-        os.environ["DC_API_KEY"] = api_key
-        print(f"\n✓ DC_API_KEY configured ({len(api_key)} chars)", file=sys.stderr)
+        sys.exit(1)  # Fail fast - better UX than delayed failure
 
-    print("=" * 60, file=sys.stderr)
+    # Set cleaned API key back to environment
+    os.environ["DC_API_KEY"] = api_key
 
-    # Import the server module
+    if debug_mode:
+        print(f"✓ DC_API_KEY configured ({len(api_key)} chars)", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+
+    # Import and run the server
     from datacommons_mcp.server import mcp
 
-    # Run the FastMCP server
-    print("Starting FastMCP server...", file=sys.stderr)
     mcp.run()
 
 
