@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Build script for DataCommons MCP Claude Desktop Extension
+# Creates a .mcpb bundle with all dependencies for easy installation
+# Tested and verified with real DataCommons API (see docs/extension-compatibility.md)
+
 echo "Building DataCommons MCP extension..."
 
 # Clean previous builds
