@@ -61,7 +61,7 @@ dc_settings = None
 
 def initialize_client() -> DCClient:
     """Initialize the DC client with settings from environment (thread-safe)."""
-    global dc_client, dc_settings
+    global dc_client, dc_settings  # noqa: PLW0603
 
     # Thread-safe client initialization
     with _client_lock:

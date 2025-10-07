@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+from typing import Any
 
 # Get API key from environment (never hardcode secrets!)
 API_KEY = os.environ.get("DC_API_KEY")
@@ -25,7 +26,7 @@ if not API_KEY:
     sys.exit(0)  # Exit 0 so this doesn't fail CI for external contributors
 
 
-def send_request(proc, req):
+def send_request(proc: subprocess.Popen, req: dict[str, Any]) -> dict[str, Any] | None:
     """Send request and read response."""
     proc.stdin.write(json.dumps(req) + "\n")
     proc.stdin.flush()
