@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
+"""
+Functional test for DataCommons MCP server in stdio mode.
+This script is for manual testing only - not run by CI.
+
+Usage:
+  export DC_API_KEY="your-api-key"
+  python functional_test.py
+"""
 import json
+import os
 import subprocess
 import sys
 
-API_KEY = "EY3NfOeSPO2217S09CRC3cA2WNIkPwAcILUVRQGRTeb3gNfg"
+# Get API key from environment (never hardcode secrets!)
+API_KEY = os.environ.get("DC_API_KEY")
+
+if not API_KEY:
+    print("SKIPPING functional test: DC_API_KEY environment variable not set.", file=sys.stderr)
+    print("Set it with: export DC_API_KEY='your-key'", file=sys.stderr)
+    sys.exit(0)  # Exit 0 so this doesn't fail CI for external contributors
 
 def send_request(proc, req):
     """Send request and read response."""
@@ -12,13 +27,14 @@ def send_request(proc, req):
     response = proc.stdout.readline()
     return json.loads(response) if response else None
 
-# Start server
+# Start server - use relative path from script location
+script_dir = os.path.dirname(os.path.abspath(__file__))
 proc = subprocess.Popen(
     ["uv", "run", "datacommons-mcp", "serve", "stdio"],
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     text=True, bufsize=1,
-    env={"DC_API_KEY": API_KEY, **subprocess.os.environ},
-    cwd="/Users/robsherman/Documents/Repos/agent-toolkit/packages/datacommons-mcp"
+    env={"DC_API_KEY": API_KEY, **os.environ},
+    cwd=script_dir
 )
 
 try:

@@ -33,7 +33,8 @@ echo
 echo "Please enter your DataCommons API key:"
 echo "(Get yours at: https://datacommons.org/)"
 echo
-read -p "API Key: " API_KEY
+read -s -p "API Key: " API_KEY
+echo  # New line after hidden input
 
 if [ -z "$API_KEY" ]; then
     echo "✗ No API key provided. Setup cancelled."
