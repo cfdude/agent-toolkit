@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import sys
+import threading
 import types
 from typing import Union, get_args, get_origin
 
@@ -53,42 +54,45 @@ from datacommons_mcp.services import (
 logger = logging.getLogger(__name__)
 
 # Global variables for lazy initialization
+_client_lock = threading.Lock()
 dc_client = None
 dc_settings = None
 
 
 def initialize_client() -> DCClient:
-    """Initialize the DC client with settings from environment."""
+    """Initialize the DC client with settings from environment (thread-safe)."""
     global dc_client, dc_settings
 
-    if dc_client is not None:
-        return dc_client
+    # Thread-safe client initialization
+    with _client_lock:
+        if dc_client is not None:
+            return dc_client
 
-    print("Initializing Data Commons client...", file=sys.stderr)
+        print("Initializing Data Commons client...", file=sys.stderr)
 
-    # Check for API key in environment
-    api_key = os.environ.get("DC_API_KEY", "")
-    if not api_key:
-        print("ERROR: DC_API_KEY not found in environment", file=sys.stderr)
-        print("Available env vars:", list(os.environ.keys()), file=sys.stderr)
-        raise ValueError("DC_API_KEY environment variable is required but not set")
+        # Check for API key in environment
+        api_key = os.environ.get("DC_API_KEY", "")
+        if not api_key:
+            print("ERROR: DC_API_KEY not found in environment", file=sys.stderr)
+            print("Available env vars:", list(os.environ.keys()), file=sys.stderr)
+            raise ValueError("DC_API_KEY environment variable is required but not set")
 
-    print(f"Found DC_API_KEY ({len(api_key)} chars)", file=sys.stderr)
+        print(f"Found DC_API_KEY ({len(api_key)} chars)", file=sys.stderr)
 
-    try:
-        dc_settings = settings.get_dc_settings()
-        logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
-        dc_client = create_dc_client(dc_settings)
-        print("✓ Data Commons client initialized successfully", file=sys.stderr)
-        return dc_client
-    except ValidationError as e:
-        logger.error("Settings error: %s", e)
-        print(f"Settings validation error: {e}", file=sys.stderr)
-        raise
-    except Exception as e:
-        logger.error("Failed to create DC client: %s", e)
-        print(f"Client creation error: {e}", file=sys.stderr)
-        raise
+        try:
+            dc_settings = settings.get_dc_settings()
+            logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
+            dc_client = create_dc_client(dc_settings)
+            print("✓ Data Commons client initialized successfully", file=sys.stderr)
+            return dc_client
+        except ValidationError as e:
+            logger.error("Settings error: %s", e)
+            print(f"Settings validation error: {e}", file=sys.stderr)
+            raise
+        except Exception as e:
+            logger.error("Failed to create DC client: %s", e)
+            print(f"Client creation error: {e}", file=sys.stderr)
+            raise
 
 
 mcp = FastMCP(
@@ -193,9 +197,6 @@ async def get_observations(
     except Exception as e:
         logger.exception("Error in get_observations: %s", e)
         print(f"ERROR in get_observations: {type(e).__name__}: {e}", file=sys.stderr)
-        import traceback
-
-        traceback.print_exc(file=sys.stderr)
         raise
 
 
