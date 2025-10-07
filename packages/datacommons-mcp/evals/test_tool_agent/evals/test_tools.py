@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 import pytest
@@ -9,6 +10,10 @@ TEST_FILES = sorted(GET_OBSERVATIONS_DATA_DIR.glob("*.test.json"))
 
 @pytest.mark.parametrize("path", TEST_FILES, ids=lambda p: p.name)
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    not os.environ.get("DC_API_KEY"),
+    reason="DC_API_KEY not set - eval tests require API access",
+)
 async def test_test_tool_agent(path: pathlib.Path) -> None:
     """Test the agent's basic ability via a session file."""
     await AgentEvaluator.evaluate(
