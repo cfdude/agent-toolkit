@@ -37,7 +37,7 @@ def send_request(proc: subprocess.Popen, req: dict[str, Any]) -> dict[str, Any] 
 # Start server - use relative path from script location
 script_dir = os.path.dirname(os.path.abspath(__file__))
 proc = subprocess.Popen(
-    ["uv", "run", "datacommons-mcp", "serve", "stdio"],
+    ["uv", "run", "datacommons-mcp", "serve", "stdio"],  # noqa: S607
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
