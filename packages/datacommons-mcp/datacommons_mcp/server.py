@@ -81,7 +81,9 @@ def initialize_client() -> DCClient:
 
         try:
             dc_settings = settings.get_dc_settings()
-            logger.info("Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2))
+            logger.info(
+                "Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2)
+            )
             dc_client = create_dc_client(dc_settings)
             print("✓ Data Commons client initialized successfully", file=sys.stderr)
             return dc_client

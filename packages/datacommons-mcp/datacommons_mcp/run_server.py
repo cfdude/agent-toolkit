@@ -32,12 +32,18 @@ def main() -> None:
     api_key = api_key_raw.strip()  # Strip whitespace
 
     if debug_mode and api_key_raw != api_key:
-        print(f"Stripped whitespace from API key ({len(api_key_raw)} → {len(api_key)} chars)", file=sys.stderr)
+        print(
+            f"Stripped whitespace from API key ({len(api_key_raw)} → {len(api_key)} chars)",
+            file=sys.stderr,
+        )
 
     # Check for unsubstituted variable placeholders
     if api_key and api_key.startswith("$"):
         if debug_mode:
-            print(f"Warning: DC_API_KEY looks like unsubstituted variable: {api_key}", file=sys.stderr)
+            print(
+                f"Warning: DC_API_KEY looks like unsubstituted variable: {api_key}",
+                file=sys.stderr,
+            )
         api_key = ""  # Treat as not set
 
     # Validate API key is present
@@ -45,11 +51,16 @@ def main() -> None:
         print("\n" + "=" * 60, file=sys.stderr)
         print("ERROR: DC_API_KEY not configured", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
-        print("\nPlease configure your DataCommons API key in Claude Desktop:", file=sys.stderr)
+        print(
+            "\nPlease configure your DataCommons API key in Claude Desktop:",
+            file=sys.stderr,
+        )
         print("  1. Go to Settings → Developer → Extensions", file=sys.stderr)
         print("  2. Find the 'datacommons-mcp' extension", file=sys.stderr)
         print("  3. Click 'Configure' and enter your API key", file=sys.stderr)
-        print("  4. Get your API key at: https://apikeys.datacommons.org", file=sys.stderr)
+        print(
+            "  4. Get your API key at: https://apikeys.datacommons.org", file=sys.stderr
+        )
         print("=" * 60, file=sys.stderr)
         sys.exit(1)  # Fail fast - better UX than delayed failure
 
