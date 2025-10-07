@@ -22,11 +22,12 @@ cp -r packages/datacommons-mcp/datacommons_mcp build/
 mkdir -p build/lib
 
 # Install dependencies into the lib directory using uv
+# Only list direct dependencies - uv resolves transitive dependencies automatically
 echo "Installing Python dependencies..."
 uv pip install \
   --target build/lib \
   --python /usr/local/bin/python \
-  fastmcp requests datacommons-client pydantic pydantic-settings python-dateutil mcp httpx starlette anyio sse-starlette
+  fastmcp requests datacommons-client pydantic pydantic-settings python-dateutil
 
 # Copy manifest to build directory
 cp manifest.json build/

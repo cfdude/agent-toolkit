@@ -5,7 +5,7 @@ This script is for manual testing only - not run by CI.
 
 Usage:
   export DC_API_KEY="your-api-key"
-  python test_functional.py
+  python functional_test.py
 """
 import json
 import os

@@ -45,7 +45,8 @@ Claude Extensions/local.mcpb.datacommons.datacommons-mcp/
 │   ├── datacommons-client/
 │   └── ... (63 total packages)
 ├── datacommons_mcp/              # Main package
-│   ├── server.py                 # Entry point
+│   ├── run_server.py             # Entry point (extension mode)
+│   ├── server.py                 # Core MCP server implementation
 │   ├── clients.py
 │   ├── services.py
 │   ├── topics.py
@@ -64,19 +65,19 @@ Key parts of `manifest.json`:
   "description": "Tools and agents for interacting with the Data Commons Knowledge Graph using the Model Context Protocol (MCP).",
   "server": {
     "type": "python",
-    "entry_point": "datacommons_mcp/server.py",
+    "entry_point": "datacommons_mcp/run_server.py",
     "mcp_config": {
       "command": "python",
       "args": [
-        "${__dirname}/datacommons_mcp/server.py"
+        "${__dirname}/datacommons_mcp/run_server.py"
       ],
       "env": {
-        "PYTHONPATH": "${__dirname}/lib"
+        "PYTHONPATH": "${__dirname}:${__dirname}/lib"
       }
     }
   },
   "user_config": {
-    "DC_API_KEY": {
+    "api_key": {
       "type": "string",
       "title": "DataCommons API Key",
       "description": "API key for accessing Data Commons. Get yours at https://datacommons.org/",
