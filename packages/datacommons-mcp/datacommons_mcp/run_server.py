@@ -22,6 +22,7 @@ def ensure_dependencies() -> None:
     # Try importing pydantic_core to check if bundled dependencies work
     try:
         import pydantic_core  # noqa: F401
+
         # If import succeeds, bundled dependencies are compatible
         return
     except (ImportError, ModuleNotFoundError) as e:
@@ -33,7 +34,12 @@ def ensure_dependencies() -> None:
         print("Installing compatible dependencies...", file=sys.stderr)
 
         # Create user-specific cache directory for this Python version
-        cache_dir = Path.home() / ".cache" / "datacommons-mcp" / f"py{sys.version_info.major}{sys.version_info.minor}"
+        cache_dir = (
+            Path.home()
+            / ".cache"
+            / "datacommons-mcp"
+            / f"py{sys.version_info.major}{sys.version_info.minor}"
+        )
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Check if already installed in cache
@@ -42,6 +48,7 @@ def ensure_dependencies() -> None:
             sys.path.insert(0, str(cache_dir))
             try:
                 import pydantic_core  # noqa: F401
+
                 print(f"✓ Using cached dependencies from {cache_dir}", file=sys.stderr)
                 return
             except (ImportError, ModuleNotFoundError):
@@ -59,7 +66,7 @@ def ensure_dependencies() -> None:
         ]
 
         try:
-            subprocess.check_call(
+            subprocess.check_call(  # noqa: S603
                 [
                     sys.executable,
                     "-m",
@@ -69,7 +76,8 @@ def ensure_dependencies() -> None:
                     str(cache_dir),
                     "--upgrade",
                     "--quiet",
-                ] + packages,
+                ]
+                + packages,
                 stderr=subprocess.PIPE,
             )
 
@@ -78,7 +86,10 @@ def ensure_dependencies() -> None:
 
             # Verify installation
             import pydantic_core  # noqa: F401
-            print(f"✓ Dependencies installed successfully to {cache_dir}", file=sys.stderr)
+
+            print(
+                f"✓ Dependencies installed successfully to {cache_dir}", file=sys.stderr
+            )
 
         except subprocess.CalledProcessError as install_error:
             print(
