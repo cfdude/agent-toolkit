@@ -7,7 +7,89 @@ Separate from cli.py to maintain backward compatibility with CLI usage modes.
 """
 
 import os
+import subprocess
 import sys
+from pathlib import Path
+
+
+def ensure_dependencies() -> None:
+    """
+    Ensure required dependencies are installed and compatible with current Python version.
+
+    If bundled dependencies are incompatible (wrong Python version), install them
+    to a user-specific cache directory.
+    """
+    # Try importing pydantic_core to check if bundled dependencies work
+    try:
+        import pydantic_core  # noqa: F401
+        # If import succeeds, bundled dependencies are compatible
+        return
+    except (ImportError, ModuleNotFoundError) as e:
+        # Bundled dependencies are missing or incompatible with this Python version
+        print(
+            f"Bundled dependencies incompatible with Python {sys.version_info.major}.{sys.version_info.minor}: {e}",
+            file=sys.stderr,
+        )
+        print("Installing compatible dependencies...", file=sys.stderr)
+
+        # Create user-specific cache directory for this Python version
+        cache_dir = Path.home() / ".cache" / "datacommons-mcp" / f"py{sys.version_info.major}{sys.version_info.minor}"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Check if already installed in cache
+        if (cache_dir / "pydantic_core").exists():
+            # Add cache to path and try again
+            sys.path.insert(0, str(cache_dir))
+            try:
+                import pydantic_core  # noqa: F401
+                print(f"✓ Using cached dependencies from {cache_dir}", file=sys.stderr)
+                return
+            except (ImportError, ModuleNotFoundError):
+                # Cache is corrupted, reinstall
+                print("Cache corrupted, reinstalling...", file=sys.stderr)
+
+        # Install dependencies to cache
+        packages = [
+            "fastmcp>=2.12.4",
+            "requests>=2.32.0",
+            "datacommons-client>=2.1.0",
+            "pydantic>=2.11.0",
+            "pydantic-settings>=2.11.0",
+            "python-dateutil>=2.9.0",
+        ]
+
+        try:
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "--target",
+                    str(cache_dir),
+                    "--upgrade",
+                    "--quiet",
+                ] + packages,
+                stderr=subprocess.PIPE,
+            )
+
+            # Add cache to path
+            sys.path.insert(0, str(cache_dir))
+
+            # Verify installation
+            import pydantic_core  # noqa: F401
+            print(f"✓ Dependencies installed successfully to {cache_dir}", file=sys.stderr)
+
+        except subprocess.CalledProcessError as install_error:
+            print(
+                f"ERROR: Failed to install dependencies: {install_error}",
+                file=sys.stderr,
+            )
+            print(
+                "Please ensure 'pip' is available in your Python installation.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 def main() -> None:
@@ -17,6 +99,9 @@ def main() -> None:
     Validates API key configuration from environment and starts the FastMCP server.
     Exits with code 1 if API key is not configured.
     """
+    # Ensure dependencies are compatible with current Python version
+    ensure_dependencies()
+
     debug_mode = os.environ.get("DC_DEBUG", "").lower() in ("1", "true", "yes")
 
     # Debug logging (opt-in only)
