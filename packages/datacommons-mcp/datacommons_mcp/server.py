@@ -117,7 +117,7 @@ async def get_observations(
     date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
-) -> str:
+) -> dict:
     """Fetches observations for a statistical variable from Data Commons.
 
     **CRITICAL: Always validate variable-place combinations first**
@@ -202,8 +202,8 @@ async def get_observations(
             date_range_start=date_range_start,
             date_range_end=date_range_end,
         )
-        # Serialize the Pydantic model to a JSON string
-        return response.model_dump_json(indent=2, exclude_none=True)
+        # Dump the Pydantic model to a dictionary
+        return response.model_dump(exclude_none=True)
     except Exception as e:
         logger.exception("Error in get_observations: %s", e)
         print(f"ERROR in get_observations: {type(e).__name__}: {e}", file=sys.stderr)
@@ -372,7 +372,7 @@ async def search_indicators(
     *,
     include_topics: bool = True,
     maybe_bilateral: bool = False,
-) -> str:
+) -> dict:
     """
     **Purpose:**
     Search for topics and variables (collectively called "indicators") available in the Data Commons Knowledge Graph.
@@ -655,5 +655,5 @@ async def search_indicators(
         include_topics=include_topics,
         maybe_bilateral=maybe_bilateral,
     )
-    # Serialize the Pydantic model to a JSON string
-    return response.model_dump_json(indent=2)
+    # Dump the Pydantic model to a dictionary
+    return response.model_dump(exclude_none=True)
