@@ -341,3 +341,29 @@ class ObservationToolResponse(ToolResponseBaseModel):
         default_factory=list,
         description="A list of other available data sources for the same variable and places.",
     )
+
+
+class ObservationPage(ToolResponseBaseModel):
+    """A paginated page of observation data from the Data Commons API.
+
+    Used for streaming large datasets to disk without accumulating in memory.
+    """
+
+    response: ObservationToolResponse = Field(
+        description="The observation data for this page."
+    )
+
+    next_token: str | None = Field(
+        default=None,
+        description="Token for fetching the next page. None if this is the last page.",
+    )
+
+    page_number: int = Field(
+        default=1,
+        description="The page number (1-indexed) for tracking progress.",
+    )
+
+    @property
+    def has_more_pages(self) -> bool:
+        """Returns True if there are more pages to fetch."""
+        return self.next_token is not None

@@ -4,6 +4,14 @@ dynamic = ["version"]
 description = "Data Commons MCP server."
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
+license = {file = "LICENSE"}
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "fastapi",
     "uvicorn",
@@ -14,14 +22,20 @@ dependencies = [
     "pydantic-settings",
     "python-dateutil>=2.9.0.post0",
 ]
-urls = {Homepage = "https://github.com/datacommonsorg/agent-toolkit"}
-license = {file = "LICENSE"}
-classifiers = [
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+
+[project.urls]
+Homepage = "https://github.com/datacommonsorg/agent-toolkit"
+
+[project.optional-dependencies]
+sse = [
+    "sse-starlette>=1.0.0",
+]
+tokens = [
+    "tiktoken>=0.5.0",
+]
+all = [
+    "sse-starlette>=1.0.0",
+    "tiktoken>=0.5.0",
 ]
 
 [project.scripts]
@@ -43,3 +57,10 @@ datacommons_mcp = ["**/*.json"]
 
 [tool.setuptools.dynamic]
 version = {attr = "datacommons_mcp.version.__version__"}
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "e2e: mark test as end-to-end (requires DC_API_KEY)",
+    "slow: mark test as slow (large datasets)",
+]

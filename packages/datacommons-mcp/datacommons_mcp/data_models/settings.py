@@ -15,12 +15,82 @@
 Pydantic settings for configuring the MCP server.
 """
 
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 from .enums import SearchScope
+
+
+class OutputSettings(BaseSettings):
+    """Settings for large dataset handling and output configuration."""
+
+    model_config = {"env_file": ".env", "extra": "ignore", "populate_by_name": True}
+
+    storage_dir: Path = Field(
+        default=Path("./datacommons-data"),
+        alias="DC_STORAGE_DIR",
+        description="Directory for storing exported data files",
+    )
+    output_format: Literal["csv", "json"] = Field(
+        default="csv",
+        alias="DC_OUTPUT_FORMAT",
+        description="Default format for file exports",
+    )
+    max_pages: int = Field(
+        default=100,
+        alias="DC_MAX_PAGES",
+        description="Maximum number of pages to fetch in paginated requests",
+        ge=1,
+        le=1000,
+    )
+    default_transport: Literal["stdio", "sse"] = Field(
+        default="stdio",
+        alias="DC_DEFAULT_TRANSPORT",
+        description="Default transport mode for MCP server",
+    )
+    sse_port: int = Field(
+        default=8080,
+        alias="DC_SSE_PORT",
+        description="Port for SSE transport server",
+        ge=1,
+        le=65535,
+    )
+    multi_file_export: bool = Field(
+        default=False,
+        alias="DC_MULTI_FILE_EXPORT",
+        description="Enable multi-file export with companion CSVs",
+    )
+    include_lineage: bool = Field(
+        default=True,
+        alias="DC_INCLUDE_LINEAGE",
+        description="Include data lineage headers in CSV exports",
+    )
+    screen_row_threshold: int = Field(
+        default=500,
+        alias="DC_SCREEN_ROW_THRESHOLD",
+        description="Max rows to return to screen in auto mode; larger responses go to file",
+        ge=1,
+        le=10000,
+    )
+
+    @field_validator("storage_dir", mode="before")
+    @classmethod
+    def parse_storage_dir(cls, v: Any) -> Path:  # noqa: ANN401
+        """Parse storage directory from string or Path."""
+        if isinstance(v, Path):
+            return v
+        if isinstance(v, str):
+            return Path(v)
+        raise ValueError(f"Invalid storage_dir type: {type(v)}")
+
+
+def get_output_settings() -> OutputSettings:
+    """Get output settings from environment."""
+    return OutputSettings()
+
 
 _MODEL_CONFIG = {"env_file": ".env", "extra": "ignore"}
 

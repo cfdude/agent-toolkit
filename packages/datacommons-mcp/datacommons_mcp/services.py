@@ -349,6 +349,54 @@ async def _build_final_response(
     return final_response
 
 
+async def get_observations_paginated(
+    client: DCClient,
+    variable_dcid: str,
+    place_dcid: str | None = None,
+    place_name: str | None = None,
+    child_place_type: str | None = None,
+    source_override: str | None = None,
+    date: str = ObservationDateType.LATEST.value,
+    date_range_start: str | None = None,
+    date_range_end: str | None = None,
+) -> tuple[ObservationToolResponse, ObservationRequest, str | None]:
+    """Fetch observations with pagination support.
+
+    This is the paginated version of get_observations that returns
+    the next_token for pagination along with the processed response.
+
+    Returns:
+        A tuple of (processed_response, request, next_token).
+        next_token is None if there are no more pages.
+    """
+    observation_request = await _validate_and_build_request(
+        client=client,
+        variable_dcid=variable_dcid,
+        place_dcid=place_dcid,
+        place_name=place_name,
+        child_place_type=child_place_type,
+        source_override=source_override,
+        date=date,
+        date_range_start=date_range_start,
+        date_range_end=date_range_end,
+    )
+
+    # Use fetch_obs_page to get both response and next_token
+    api_response, next_token = await client.fetch_obs_page(observation_request)
+
+    metadata_map = await _fetch_all_metadata(
+        client, variable_dcid, api_response, observation_request.place_dcid
+    )
+
+    processed_response = await _build_final_response(
+        request=observation_request,
+        api_response=api_response,
+        metadata_map=metadata_map,
+    )
+
+    return processed_response, observation_request, next_token
+
+
 async def get_observations(
     client: DCClient,
     variable_dcid: str,

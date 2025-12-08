@@ -32,6 +32,11 @@ from datacommons_mcp.data_models.observations import (
     ObservationApiResponse,
     ObservationRequest,
 )
+
+# Type for raw paginated API response
+PaginatedApiResponse = tuple[
+    ObservationApiResponse, str | None
+]  # (response, next_token)
 from datacommons_mcp.data_models.search import (
     NodeInfo,
     SearchIndicator,
@@ -160,6 +165,96 @@ class DCClient:
             date=request.date_type,
             filter_facet_ids=request.source_ids,
         )
+
+    async def fetch_obs_page(
+        self,
+        request: ObservationRequest,
+        page_token: str | None = None,
+    ) -> PaginatedApiResponse:
+        """
+        Fetch a single page of observations with pagination support.
+
+        This method wraps the underlying Data Commons API call and extracts
+        the next_token from the response for pagination.
+
+        Args:
+            request: The observation request parameters.
+            page_token: Optional token from a previous response for continuation.
+
+        Returns:
+            A tuple of (ObservationApiResponse, next_token).
+            next_token is None if this is the last page.
+
+        Note:
+            The Data Commons REST V2 API returns a `nextToken` field in the
+            response when there are more pages available. This method extracts
+            that token for use in subsequent requests.
+        """
+        # Build base parameters
+        params = {
+            "variable_dcids": request.variable_dcid,
+            "date": request.date_type,
+            "filter_facet_ids": request.source_ids,
+        }
+
+        # Add page token if provided
+        if page_token:
+            params["page_token"] = page_token
+
+        # Make the API call
+        if request.child_place_type:
+            response = self.dc.observation.fetch_observations_by_entity_type(
+                parent_entity=request.place_dcid,
+                entity_type=request.child_place_type,
+                **params,
+            )
+        else:
+            response = self.dc.observation.fetch(
+                entity_dcids=request.place_dcid,
+                **params,
+            )
+
+        # Extract next_token from raw response if available
+        # The datacommons_client library wraps the response, so we need to
+        # check if the underlying raw response has a nextToken field
+        next_token = self._extract_next_token(response)
+
+        return response, next_token
+
+    def _extract_next_token(self, response: ObservationApiResponse) -> str | None:
+        """
+        Extract the next page token from an observation API response.
+
+        The Data Commons REST V2 API includes a `nextToken` field in the
+        response body when more pages are available.
+
+        Args:
+            response: The ObservationApiResponse from the API.
+
+        Returns:
+            The next page token, or None if no more pages.
+        """
+        # The datacommons_client library wraps responses in an ObservationResponse
+        # object. We need to check if the underlying data has a nextToken.
+        # This depends on how the library exposes the raw response.
+
+        # Try to access raw response data
+        if hasattr(response, "_raw_response"):
+            raw = response._raw_response
+            if isinstance(raw, dict):
+                return raw.get("nextToken")
+
+        # Fallback: check if response has a nextToken attribute
+        if hasattr(response, "next_token"):
+            return response.next_token
+
+        # Check the response's to_dict() method if available
+        if hasattr(response, "to_dict"):
+            response_dict = response.to_dict()
+            if isinstance(response_dict, dict):
+                return response_dict.get("nextToken")
+
+        return None
 
     async def fetch_entity_names(self, dcids: list[str]) -> dict:
         response = self.dc.node.fetch_entity_names(entity_dcids=dcids)

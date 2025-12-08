@@ -21,7 +21,7 @@ import os
 import sys
 import threading
 import types
-from typing import TYPE_CHECKING, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Literal, Union, get_args, get_origin
 
 from fastmcp import FastMCP
 from pydantic import ValidationError
@@ -38,14 +38,24 @@ from datacommons_mcp.data_models.charts import (
 )
 from datacommons_mcp.data_models.observations import (
     ObservationDateType,
-    ObservationToolResponse,
 )
+from datacommons_mcp.data_models.settings import get_output_settings
 from datacommons_mcp.services import (
-    get_observations as get_observations_service,
+    get_observations_paginated as get_observations_service,
 )
 from datacommons_mcp.services import (
     search_indicators as search_indicators_service,
 )
+from datacommons_mcp.utils.output_handler import (
+    OutputHandler,
+    OutputHandlerConfig,
+)
+
+# Optional import for transport - may not be available if CLI not used
+try:
+    from datacommons_mcp.cli import get_transport
+except ImportError:
+    get_transport = None  # type: ignore
 
 # The `datacommons_mcp.data_models.search` module is imported under `if TYPE_CHECKING:`
 # because the `SearchResponse` model is only needed for type hinting. This pattern
@@ -117,6 +127,9 @@ async def get_observations(
     date: str = ObservationDateType.LATEST.value,
     date_range_start: str | None = None,
     date_range_end: str | None = None,
+    output: Literal["auto", "screen", "file"] = "auto",
+    output_format: Literal["csv", "json"] = "csv",
+    multi_file: bool = False,
 ) -> dict:
     """Fetches observations for a statistical variable from Data Commons.
 
@@ -167,6 +180,11 @@ async def get_observations(
             * Dates must be in `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` format.
         3.  **Default Behavior**: If you do not provide **any** date parameters (`date`, `date_range_start`, or `date_range_end`), the tool will automatically fetch only the `'latest'` observation.
 
+    * **Output Mode**: Controls how large datasets are returned.
+        * `auto` (default): Automatically detects if response is paginated. Single-page responses are returned directly, multi-page responses are streamed to a CSV file.
+        * `screen`: Always return data directly in the response (may be truncated for large datasets).
+        * `file`: Always stream data to a file, even for small datasets.
+
     Args:
       variable_dcid (str, required): The unique identifier (DCID) of the statistical variable.
       place_dcid (str, required): The DCID of the place.
@@ -175,23 +193,30 @@ async def get_observations(
       date (str, optional): An optional date filter. Accepts 'all', 'latest', 'range', or single date values of the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'. Defaults to 'latest' if no date parameters are provided.
       date_range_start (str, optional): The start date for a range (inclusive). **Used only if `date` is set to'range'.**
       date_range_end (str, optional): The end date for a range (inclusive). **Used only if `date` is set to'range'.**
+      output (str, optional): Output mode - 'auto' (default), 'screen', or 'file'. Auto mode detects large datasets and streams to file.
+      output_format (str, optional): Output format for file mode - 'csv' (default) or 'json'.
+      multi_file (bool, optional): If True, creates companion files with place and source metadata (default: False).
 
     Returns:
-        The fetched observation data including:
-        - `variable`: Details about the statistical variable requested.
-        - `place_observations`: A list of observations, one entry per place. Each entry contains:
-            - `place`: Details about the observed place (DCID, name, type).
-            - `time_series`: A list of `(date, value)` tuples, where `date` is a string (e.g., "2022-01-01") and `value` is a float.
-        - `source_metadata`: Information about the primary data source used.
-        - `alternative_sources`: Details about other available data sources.
+        For screen mode:
+        - `output_mode`: "screen"
+        - `data`: The observation data including variable, place_observations, source_metadata, and alternative_sources.
+
+        For file mode:
+        - `output_mode`: "file"
+        - `file_path`: Path to the created CSV/JSON file.
+        - `rows_written`: Number of data rows written.
+        - `pages_fetched`: Number of API pages fetched.
+        - `file_size_bytes`: Size of the output file.
+        - `unique_places_count`: Number of unique places in the data.
 
     """
     try:
         # Initialize client if not already done
         client = initialize_client()
 
-        # TODO(keyurs): Remove place_name parameter from the service call.
-        response: ObservationToolResponse = await get_observations_service(
+        # Get processed response, request, and pagination token
+        response, request, next_token = await get_observations_service(
             client=client,
             variable_dcid=variable_dcid,
             place_dcid=place_dcid,
@@ -202,8 +227,35 @@ async def get_observations(
             date_range_start=date_range_start,
             date_range_end=date_range_end,
         )
-        # Dump the Pydantic model to a dictionary
-        return response.model_dump(exclude_none=True)
+
+        # Create output handler with settings
+        output_settings = get_output_settings()
+        config = OutputHandlerConfig.from_settings(output_settings)
+        output_handler = OutputHandler(client, config)
+
+        # Get progress callback from transport if available
+        progress_callback = None
+        if get_transport is not None:
+            try:
+                transport = get_transport()
+                if transport and hasattr(transport, "create_progress_callback"):
+                    progress_callback = transport.create_progress_callback()
+            except Exception:
+                pass  # Transport not configured - no progress updates
+
+        # Handle output based on mode
+        result = await output_handler.handle_observations(
+            request=request,
+            processed_response=response,
+            next_token=next_token,
+            output_mode=output,
+            output_format=output_format,
+            multi_file=multi_file,
+            progress_callback=progress_callback,
+        )
+
+        return result
+
     except Exception as e:
         logger.exception("Error in get_observations: %s", e)
         print(f"ERROR in get_observations: {type(e).__name__}: {e}", file=sys.stderr)
