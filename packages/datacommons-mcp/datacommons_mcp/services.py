@@ -743,8 +743,8 @@ async def _resolve_places(
     try:
         return await client.search_places(places)
     except Exception as e:
-        msg = "Error resolving place names"
-        logger.error("%s: %s", msg, e)
+        msg = f"Error resolving place names {places}: {type(e).__name__}: {e}"
+        logger.error(msg)
         raise DataLookupError(msg) from e
 
 

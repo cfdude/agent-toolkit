@@ -114,7 +114,8 @@ class OutputHandler:
         self.config = config or OutputHandlerConfig.from_settings()
 
         # Initialize path resolver
-        storage_dir = self.config.storage_dir or Path("./datacommons-data")
+        # Use configured storage_dir or default to ~/Documents/datacommons-data
+        storage_dir = self.config.storage_dir or (Path.home() / "Documents" / "datacommons-data")
         self.path_resolver = PathResolver(storage_dir)
 
         # Initialize pagination handler

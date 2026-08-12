@@ -101,7 +101,7 @@ def initialize_client() -> DCClient:
                 "Loaded DC settings:\n%s", dc_settings.model_dump_json(indent=2)
             )
             dc_client = create_dc_client(dc_settings)
-            print("✓ Data Commons client initialized successfully", file=sys.stderr)
+            print("[OK] Data Commons client initialized successfully", file=sys.stderr)
             return dc_client
         except ValidationError as e:
             logger.error("Settings error: %s", e)

@@ -24,13 +24,18 @@ from pydantic_settings import BaseSettings
 from .enums import SearchScope
 
 
+def _default_storage_dir() -> Path:
+    """Return the default storage directory (~/Documents/datacommons-data)."""
+    return Path.home() / "Documents" / "datacommons-data"
+
+
 class OutputSettings(BaseSettings):
     """Settings for large dataset handling and output configuration."""
 
     model_config = {"env_file": ".env", "extra": "ignore", "populate_by_name": True}
 
     storage_dir: Path = Field(
-        default=Path("./datacommons-data"),
+        default_factory=_default_storage_dir,
         alias="DC_STORAGE_DIR",
         description="Directory for storing exported data files",
     )
@@ -79,11 +84,14 @@ class OutputSettings(BaseSettings):
     @field_validator("storage_dir", mode="before")
     @classmethod
     def parse_storage_dir(cls, v: Any) -> Path:  # noqa: ANN401
-        """Parse storage directory from string or Path."""
+        """Parse storage directory from string or Path, expanding ~ and making absolute."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            # Empty or None - use default
+            return _default_storage_dir()
         if isinstance(v, Path):
-            return v
+            return v.expanduser().resolve()
         if isinstance(v, str):
-            return Path(v)
+            return Path(v).expanduser().resolve()
         raise ValueError(f"Invalid storage_dir type: {type(v)}")
 
 
